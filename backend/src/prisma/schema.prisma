@@ -1,0 +1,315 @@
+// LifeHub MVP Prisma schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  settings         UserSettings?
+  sleepEntries     SleepEntry[]
+  waterEntries     WaterEntry[]
+  movementEntries  MovementEntry[]
+  nutritionEntries NutritionEntry[]
+  accounts         Account[]
+  categories       TransactionCategory[]
+  transactions     Transaction[]
+  habits           Habit[]
+  habitCompletions HabitCompletion[]
+  goals            Goal[]
+  goalMilestones   GoalMilestone[]
+  skills           Skill[]
+  learningSessions LearningSession[]
+  semesters        Semester[]
+  courses          Course[]
+  courseTasks      CourseTask[]
+}
+
+model UserSettings {
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  user              User    @relation(fields: [userId], references: [id])
+  theme             String  @default("light")
+  hydrationGoalMl   Int?
+  sleepGoalMinutes  Int?
+}
+
+model SleepEntry {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  clientId        String    @unique
+  bedtime         DateTime
+  wakeTime        DateTime
+  durationMinutes Int
+  quality         Int?
+  feeling         String?
+  date            DateTime
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, date])
+}
+
+model WaterEntry {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  amountMl  Int
+  loggedAt  DateTime
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId, loggedAt])
+}
+
+model MovementEntry {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  clientId        String    @unique
+  activityType    String
+  durationMinutes Int
+  loggedAt        DateTime
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, loggedAt])
+}
+
+model NutritionEntry {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  clientId    String    @unique
+  mealType    String
+  description String
+  loggedAt    DateTime
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId, loggedAt])
+}
+
+model Account {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  name      String
+  type      String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  transactionsFrom Transaction[] @relation("FromAccount")
+  transactionsTo   Transaction[] @relation("ToAccount")
+
+  @@index([userId])
+}
+
+model TransactionCategory {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  name      String
+  isDefault Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  transactions Transaction[]
+
+  @@unique([userId, name])
+}
+
+model Transaction {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id])
+  clientId           String    @unique
+  accountId          String
+  account             Account   @relation("FromAccount", fields: [accountId], references: [id])
+  categoryId         String?
+  category           TransactionCategory? @relation(fields: [categoryId], references: [id])
+  type               String   // income | expense | transfer
+  amount             Decimal   @db.Decimal(12, 2)
+  currency           String    @default("ETB")
+  note               String?
+  date               DateTime
+  transferToAccountId String?
+  transferToAccount   Account? @relation("ToAccount", fields: [transferToAccountId], references: [id])
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([userId, date])
+}
+
+model Habit {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  name      String
+  frequency String    // daily | weekly
+  active    Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  completions HabitCompletion[]
+
+  @@index([userId])
+}
+
+model HabitCompletion {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  habitId   String
+  habit     Habit     @relation(fields: [habitId], references: [id])
+  date      DateTime
+  completed Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([habitId, date])
+}
+
+model Goal {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  clientId        String    @unique
+  category        String    // career | aiml | university | spiritual | personal
+  name            String
+  progressPercent Int       @default(0)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  milestones GoalMilestone[]
+
+  @@index([userId])
+}
+
+model GoalMilestone {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  goalId    String
+  goal      Goal      @relation(fields: [goalId], references: [id])
+  name      String
+  completed Boolean   @default(false)
+  order     Int       @default(0)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([goalId])
+}
+
+model Skill {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  clientId        String    @unique
+  name            String
+  progressPercent Int       @default(0)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  learningSessions LearningSession[]
+
+  @@unique([userId, name])
+}
+
+model LearningSession {
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  clientId        String    @unique
+  skillId         String?
+  skill           Skill?    @relation(fields: [skillId], references: [id])
+  topic           String
+  durationMinutes Int
+  loggedAt        DateTime
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, loggedAt])
+}
+
+model Semester {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  clientId  String    @unique
+  label     String
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  courses Course[]
+
+  @@index([userId])
+}
+
+model Course {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id])
+  clientId     String    @unique
+  semesterId   String
+  semester     Semester  @relation(fields: [semesterId], references: [id])
+  name         String
+  code         String?
+  creditHours  Int?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tasks CourseTask[]
+
+  @@index([semesterId])
+}
+
+model CourseTask {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  clientId    String    @unique
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id])
+  description String
+  deadline    DateTime?
+  status      String    @default("pending") // pending | done
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([courseId])
+}
